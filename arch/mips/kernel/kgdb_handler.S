@@ -1,13 +1,26 @@
 /*
- * gdb-low.S contains the low-level trap handler for the GDB stub.
+ * arch/mips/kernel/kgdb_handler.S
  *
- * Copyright (C) 1995 Andreas Busse
+ * Copyright (C) 2007 Wind River Systems, Inc
+ *
+ * Copyright (C) 2004-2005 MontaVista Software Inc.
+ * Author: Manish Lachwani, mlachwani@mvista.com or manish@koffee-break.com
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * version 2. This program is licensed "as is" without any warranty of any
+ * kind, whether express or implied.
  */
+
+/*
+ * Trap Handler for the new KGDB framework. The main KGDB handler is
+ * handle_exception that will be called from here
+ *
+ */
+
 #include <linux/sys.h>
 
 #include <asm/asm.h>
 #include <asm/errno.h>
-#include <asm/irqflags.h>
 #include <asm/mipsregs.h>
 #include <asm/regdef.h>
 #include <asm/stackframe.h>
@@ -17,14 +30,16 @@
 #define DMFC0	mfc0
 #define DMTC0	mtc0
 #define LDC1	lwc1
-#define SDC1	lwc1
+#define SDC1	swc1
 #endif
 #ifdef CONFIG_64BIT
 #define DMFC0	dmfc0
 #define DMTC0	dmtc0
 #define LDC1	ldc1
-#define SDC1	ldc1
+#define SDC1	sdc1
 #endif
+
+#include <asm/asmmacro.h>
 
 /*
  * [jsun] We reserves about 2x GDB_FR_SIZE in stack.  The lower (addressed)
@@ -41,7 +56,7 @@
  */
 		.align 	5
 		NESTED(trap_low, GDB_FR_SIZE, sp)
-		.set	noat
+ 		.set	noat
 		.set 	noreorder
 
 		mfc0	k0, CP0_STATUS
@@ -52,13 +67,27 @@
 		/*
 		 * Called from user mode, go somewhere else.
 		 */
+#if defined(CONFIG_32BIT)
+		lui	k1, %hi(saved_vectors)
 		mfc0	k0, CP0_CAUSE
 		andi	k0, k0, 0x7c
-#ifdef CONFIG_64BIT
-		dsll	k0, k0, 1
+		add	k1, k1, k0
+		lw	k0, %lo(saved_vectors)(k1)
+#elif defined(CONFIG_64BIT) && defined(CONFIG_BUILD_ELF64)
+		DMFC0	k0, CP0_CAUSE
+		lui	k1, %highest(saved_vectors)
+                andi    k0, k0, 0x7c           /* mask exception type */
+                dsll    k0, 1                  /* turn into byte offset */
+		daddiu	k1, %higher(saved_vectors)
+		dsll	k1, k1, 16
+		daddiu	k1, %hi(saved_vectors)
+		dsll	k1, k1, 16
+		daddu	k1, k1, k0
+		LONG_L	k0, %lo(saved_vectors)(k1)
+#else
+#error "MIPS configuration is unsupported for kgdb!!"
 #endif
-		PTR_L	k1, saved_vectors(k0)
-		jr	k1
+		jr	k0
 		nop
 1:
 		move	k0, sp
@@ -121,7 +150,6 @@
 		LONG_S	$31, GDB_FR_REG31(sp)
 
 		CLI				/* disable interrupts */
-		TRACE_IRQS_OFF
 
 /*
  * Followed by the floating point registers
@@ -130,56 +158,21 @@
 		srl	v0, v0, 16
 		andi	v0, v0, (ST0_CU1 >> 16)
 
-		beqz	v0,2f			/* disabled, skip */
+		beqz	v0,3f			/* disabled, skip */
 		 nop
 
-		SDC1	$0, GDB_FR_FPR0(sp)
-		SDC1	$1, GDB_FR_FPR1(sp)
-		SDC1	$2, GDB_FR_FPR2(sp)
-		SDC1	$3, GDB_FR_FPR3(sp)
-		SDC1	$4, GDB_FR_FPR4(sp)
-		SDC1	$5, GDB_FR_FPR5(sp)
-		SDC1	$6, GDB_FR_FPR6(sp)
-		SDC1	$7, GDB_FR_FPR7(sp)
-		SDC1	$8, GDB_FR_FPR8(sp)
-		SDC1	$9, GDB_FR_FPR9(sp)
-		SDC1	$10, GDB_FR_FPR10(sp)
-		SDC1	$11, GDB_FR_FPR11(sp)
-		SDC1	$12, GDB_FR_FPR12(sp)
-		SDC1	$13, GDB_FR_FPR13(sp)
-		SDC1	$14, GDB_FR_FPR14(sp)
-		SDC1	$15, GDB_FR_FPR15(sp)
-		SDC1	$16, GDB_FR_FPR16(sp)
-		SDC1	$17, GDB_FR_FPR17(sp)
-		SDC1	$18, GDB_FR_FPR18(sp)
-		SDC1	$19, GDB_FR_FPR19(sp)
-		SDC1	$20, GDB_FR_FPR20(sp)
-		SDC1	$21, GDB_FR_FPR21(sp)
-		SDC1	$22, GDB_FR_FPR22(sp)
-		SDC1	$23, GDB_FR_FPR23(sp)
-		SDC1	$24, GDB_FR_FPR24(sp)
-		SDC1	$25, GDB_FR_FPR25(sp)
-		SDC1	$26, GDB_FR_FPR26(sp)
-		SDC1	$27, GDB_FR_FPR27(sp)
-		SDC1	$28, GDB_FR_FPR28(sp)
-		SDC1	$29, GDB_FR_FPR29(sp)
-		SDC1	$30, GDB_FR_FPR30(sp)
-		SDC1	$31, GDB_FR_FPR31(sp)
+		li	t0, 0
+#ifdef CONFIG_64BIT
+		mfc0	t0, CP0_STATUS
+#endif
+		fpu_save_double_kgdb sp t0 t1	# clobbers t1
 
-/*
- * FPU control registers
- */
-
-		cfc1	v0, CP1_STATUS
-		LONG_S	v0, GDB_FR_FSR(sp)
-		cfc1	v0, CP1_REVISION
-		LONG_S	v0, GDB_FR_FIR(sp)
 
 /*
  * Current stack frame ptr
  */
 
-2:
+3:
 		LONG_S	sp, GDB_FR_FRP(sp)
 
 /*
@@ -248,71 +241,23 @@
 		beqz	v0, 3f			/* disabled, skip */
 		 nop
 
-		LDC1	$31, GDB_FR_FPR31(sp)
-		LDC1	$30, GDB_FR_FPR30(sp)
-		LDC1	$29, GDB_FR_FPR29(sp)
-		LDC1	$28, GDB_FR_FPR28(sp)
-		LDC1	$27, GDB_FR_FPR27(sp)
-		LDC1	$26, GDB_FR_FPR26(sp)
-		LDC1	$25, GDB_FR_FPR25(sp)
-		LDC1	$24, GDB_FR_FPR24(sp)
-		LDC1	$23, GDB_FR_FPR23(sp)
-		LDC1	$22, GDB_FR_FPR22(sp)
-		LDC1	$21, GDB_FR_FPR21(sp)
-		LDC1	$20, GDB_FR_FPR20(sp)
-		LDC1	$19, GDB_FR_FPR19(sp)
-		LDC1	$18, GDB_FR_FPR18(sp)
-		LDC1	$17, GDB_FR_FPR17(sp)
-		LDC1	$16, GDB_FR_FPR16(sp)
-		LDC1	$15, GDB_FR_FPR15(sp)
-		LDC1	$14, GDB_FR_FPR14(sp)
-		LDC1	$13, GDB_FR_FPR13(sp)
-		LDC1	$12, GDB_FR_FPR12(sp)
-		LDC1	$11, GDB_FR_FPR11(sp)
-		LDC1	$10, GDB_FR_FPR10(sp)
-		LDC1	$9, GDB_FR_FPR9(sp)
-		LDC1	$8, GDB_FR_FPR8(sp)
-		LDC1	$7, GDB_FR_FPR7(sp)
-		LDC1	$6, GDB_FR_FPR6(sp)
-		LDC1	$5, GDB_FR_FPR5(sp)
-		LDC1	$4, GDB_FR_FPR4(sp)
-		LDC1	$3, GDB_FR_FPR3(sp)
-		LDC1	$2, GDB_FR_FPR2(sp)
-		LDC1	$1, GDB_FR_FPR1(sp)
-		LDC1	$0, GDB_FR_FPR0(sp)
+		li	t0, 0
+#ifdef CONFIG_64BIT
+		mfc0	t0, CP0_STATUS
+#endif
+		fpu_restore_double_kgdb sp t0 t1 # clobbers t1
+
 
 /*
  * Now the CP0 and integer registers
  */
 
 3:
-#ifdef CONFIG_MIPS_MT_SMTC
-		/* Read-modify write of Status must be atomic */
-		mfc0	t2, CP0_TCSTATUS
-		ori	t1, t2, TCSTATUS_IXMT
-		mtc0	t1, CP0_TCSTATUS
-		andi	t2, t2, TCSTATUS_IXMT
-		_ehb
-		DMT	9				# dmt	t1
-		jal	mips_ihb
-		nop
-#endif /* CONFIG_MIPS_MT_SMTC */
 		mfc0	t0, CP0_STATUS
 		ori	t0, 0x1f
 		xori	t0, 0x1f
 		mtc0	t0, CP0_STATUS
-#ifdef CONFIG_MIPS_MT_SMTC
-        	andi    t1, t1, VPECONTROL_TE
-        	beqz    t1, 9f
-		nop
-        	EMT					# emt
-9:
-		mfc0	t1, CP0_TCSTATUS
-		xori	t1, t1, TCSTATUS_IXMT
-		or	t1, t1, t2
-		mtc0	t1, CP0_TCSTATUS
-		_ehb
-#endif /* CONFIG_MIPS_MT_SMTC */
+
 		LONG_L	v0, GDB_FR_STATUS(sp)
 		LONG_L	v1, GDB_FR_EPC(sp)
 		mtc0	v0, CP0_STATUS

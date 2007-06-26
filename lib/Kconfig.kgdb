@@ -13,7 +13,7 @@ config UNWIND_INFO
 config KGDB
 	bool "KGDB: kernel debugging with remote gdb"
 	select WANT_EXTRA_DEBUG_INFORMATION
-	depends on DEBUG_KERNEL && (X86 || PPC)
+	depends on DEBUG_KERNEL && (X86 || MIPS || PPC)
 	help
 	  If you say Y here, it will be possible to remotely debug the
 	  kernel using gdb.  Documentation of kernel debugger is available
@@ -41,6 +41,8 @@ choice
 	depends on KGDB
 	default KGDB_MPSC if SERIAL_MPSC
 	default KGDB_CPM_UART if (CPM2 || 8xx)
+	default KGDB_SIBYTE if SIBYTE_SB1xxx_SOC
+ 	default KGDB_TXX9 if CPU_TX49XX
 	default KGDB_8250_NOMODULE
 	help
 	  There are a number of different ways in which you can communicate
@@ -89,6 +91,16 @@ config KGDB_CPM_UART
 	depends on PPC && (CPM2 || 8xx)
  	help
  	  Uses CPM UART to communicate with the host GDB.
+
+config KGDB_SIBYTE
+	bool "KGDB: On Broadcom SB1xxx serial port"
+	depends on MIPS && SIBYTE_SB1xxx_SOC
+
+config KGDB_TXX9
+	bool "KGDB: On TX49xx serial port"
+	depends on MIPS && CPU_TX49XX
+	help
+	  Uses TX49xx serial port to communicate with the host KGDB.
 endchoice
 
 choice
@@ -155,7 +167,8 @@ config KGDB_SIMPLE_SERIAL
 config KGDB_BAUDRATE
 	int "Debug serial port baud rate"
 	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL) || \
-		KGDB_MPSC || KGDB_CPM_UART
+		KGDB_MPSC || KGDB_CPM_UART || \
+		KGDB_TXX9
 	default "115200"
 	help
 	  gdb and the kernel stub need to agree on the baud rate to be
@@ -166,7 +179,7 @@ config KGDB_PORT_NUM
 	int "Serial port number for KGDB"
 	range 0 1 if KGDB_MPSC
 	range 0 3
-	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL) || KGDB_MPSC
+	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL) || KGDB_MPSC || KGDB_TXX9
 	default "1"
 	help
 	  Pick the port number (0 based) for KGDB to use.
