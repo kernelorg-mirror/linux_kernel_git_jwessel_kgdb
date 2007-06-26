@@ -39,7 +39,7 @@ config KGDB_CONSOLE
 choice
 	prompt "Method for KGDB communication"
 	depends on KGDB
-	default KGDB_ONLY_MODULES
+	default KGDB_8250_NOMODULE
 	help
 	  There are a number of different ways in which you can communicate
 	  with KGDB.  The most common is via serial, with the 8250 driver
@@ -57,4 +57,60 @@ config KGDB_ONLY_MODULES
 	  Use only kernel modules to configure KGDB I/O after the
 	  kernel is booted.
 
+config KGDB_8250_NOMODULE
+	bool "KGDB: On generic serial port (8250)"
+	select KGDB_8250
+	help
+	  Uses generic serial port (8250) to communicate with the host
+	  GDB.  This is independent of the normal (SERIAL_8250) driver
+	  for this chipset.
 endchoice
+
+config KGDB_8250
+	tristate "KGDB: On generic serial port (8250)" if !KGDB_8250_NOMODULE
+	depends on m && KGDB_ONLY_MODULES
+	help
+	  Uses generic serial port (8250) to communicate with the host
+	  GDB.  This is independent of the normal (SERIAL_8250) driver
+	  for this chipset.
+
+config KGDB_SIMPLE_SERIAL
+	bool "Simple selection of KGDB serial port"
+	depends on KGDB_8250_NOMODULE
+	default y
+	help
+	  If you say Y here, you will only have to pick the baud rate
+	  and port number that you wish to use for KGDB.  Note that this
+	  only works on architectures that register known serial ports
+	  early on.  If you say N, you will have to provide, either here
+	  or on the command line, the type (I/O or MMIO), IRQ and
+	  address to use.  If in doubt, say Y.
+
+config KGDB_BAUDRATE
+	int "Debug serial port baud rate"
+	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL)
+	default "115200"
+	help
+	  gdb and the kernel stub need to agree on the baud rate to be
+	  used.  Standard rates from 9600 to 115200 are allowed, and this
+	  may be overridden via the commandline.
+
+config KGDB_PORT_NUM
+	int "Serial port number for KGDB"
+	range 0 1 if KGDB_MPSC
+	range 0 3
+	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL) || KGDB_MPSC
+	default "1"
+	help
+	  Pick the port number (0 based) for KGDB to use.
+
+config KGDB_8250_CONF_STRING
+	string "Configuration string for KGDB"
+	depends on KGDB_8250_NOMODULE && !KGDB_SIMPLE_SERIAL
+	default "io,2f8,115200,3" if X86
+	help
+	  The format of this string should be <io or
+	  mmio>,<address>,<baud rate>,<irq>.  For example, to use the
+	  serial port on an i386 box located at 0x2f8 and 115200 baud
+	  on IRQ 3 at use:
+	  io,2f8,115200,3
