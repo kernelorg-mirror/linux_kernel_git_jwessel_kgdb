@@ -1,0 +1,60 @@
+
+config WANT_EXTRA_DEBUG_INFORMATION
+	bool
+	select DEBUG_INFO
+	select UNWIND_INFO
+	select FRAME_POINTER if X86
+	default n
+
+config UNWIND_INFO
+	bool
+	default n
+
+config KGDB
+	bool "KGDB: kernel debugging with remote gdb"
+	select WANT_EXTRA_DEBUG_INFORMATION
+	depends on DEBUG_KERNEL
+	help
+	  If you say Y here, it will be possible to remotely debug the
+	  kernel using gdb.  Documentation of kernel debugger is available
+	  at http://kgdb.sourceforge.net as well as in DocBook form
+	  in Documentation/DocBook/.  If unsure, say N.
+
+config KGDB_ARCH_HAS_SHADOW_INFO
+	bool
+
+config KGDB_CONSOLE
+	bool "KGDB: Console messages through gdb"
+	depends on KGDB
+	  help
+	    If you say Y here, console messages will appear through gdb.
+	    Other consoles such as tty or ttyS will continue to work as usual.
+	    Note, that if you use this in conjunction with KGDB_ETH, if the
+	    ethernet driver runs into an error condition during use with KGDB
+	    it is possible to hit an infinite recusrion, causing the kernel
+	    to crash, and typically reboot.  For this reason, it is preferable
+	    to use NETCONSOLE in conjunction with KGDB_ETH instead of
+	    KGDB_CONSOLE.
+
+choice
+	prompt "Method for KGDB communication"
+	depends on KGDB
+	default KGDB_ONLY_MODULES
+	help
+	  There are a number of different ways in which you can communicate
+	  with KGDB.  The most common is via serial, with the 8250 driver
+	  (should your hardware have an 8250, or ns1655x style uart).
+	  Another option is to use the NETPOLL framework and UDP, should
+	  your ethernet card support this.  Other options may exist.
+	  You can elect to have one core I/O driver that is built into the
+	  kernel for debugging as the kernel is booting, or using only
+	  kernel modules.
+
+config KGDB_ONLY_MODULES
+	bool "KGDB: Use only kernel modules for I/O"
+	depends on MODULES
+	help
+	  Use only kernel modules to configure KGDB I/O after the
+	  kernel is booted.
+
+endchoice
