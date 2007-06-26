@@ -3,7 +3,7 @@ config WANT_EXTRA_DEBUG_INFORMATION
 	bool
 	select DEBUG_INFO
 	select UNWIND_INFO
-	select FRAME_POINTER if X86
+	select FRAME_POINTER if X86 || SUPERH
 	default n
 
 config UNWIND_INFO
@@ -14,7 +14,7 @@ config KGDB
 	bool "KGDB: kernel debugging with remote gdb"
 	select WANT_EXTRA_DEBUG_INFORMATION
 	select KGDB_ARCH_HAS_SHADOW_INFO if X86_64
-	depends on DEBUG_KERNEL && (X86 || MIPS || IA64 || PPC)
+	depends on DEBUG_KERNEL && (X86 || MIPS || (SUPERH && !SUPERH64) || IA64 || PPC)
 	help
 	  If you say Y here, it will be possible to remotely debug the
 	  kernel using gdb.  Documentation of kernel debugger is available
@@ -44,6 +44,7 @@ choice
 	default KGDB_CPM_UART if (CPM2 || 8xx)
 	default KGDB_SIBYTE if SIBYTE_SB1xxx_SOC
  	default KGDB_TXX9 if CPU_TX49XX
+	default KGDB_SH_SCI if SERIAL_SH_SCI
 	default KGDB_8250_NOMODULE
 	help
 	  There are a number of different ways in which you can communicate
@@ -102,6 +103,12 @@ config KGDB_TXX9
 	depends on MIPS && CPU_TX49XX
 	help
 	  Uses TX49xx serial port to communicate with the host KGDB.
+
+config KGDB_SH_SCI
+	bool "KGDB: On SH SCI(F) serial port"
+	depends on SUPERH && SERIAL_SH_SCI
+	help
+	  Uses the SH SCI(F) serial port to communicate with the host GDB.
 endchoice
 
 choice

@@ -124,6 +124,10 @@
     serial driver, pass in: <constant>kgdbwait</constant>.
     </para>
     <para>
+    To specify the values of the SH SCI(F) serial port at boot:
+    <constant>kgdbsci=0,115200</constant>.
+    </para>
+    <para>
     To specify the values of the serial port at boot:
     <constant>kgdb8250=io,3f8,115200,3</constant>.
     On IA64 this could also be:
@@ -180,6 +184,18 @@
     Once connected, you can debug a kernel the way you would debug an
     application program.
     </para>
+  </chapter>
+  <chapter id="ArchitectureNotes">
+    <title>Architecture specific notes</title>
+      <para>
+      SuperH: The NMI switch found on some boards can be used to trigger an
+      initial breakpoint.  Subsequent triggers do nothing.  If console
+      is enabled on the SCI(F) serial port, and that is the port being used
+      for KGDB, then you must trigger a breakpoint via sysrq, NMI, or
+      some other method prior to connecting, or echo a control-c to the
+      serial port.  Also, to use the SCI(F) port for KGDB, the
+      <symbol>CONFIG_SERIAL_SH_SCI</symbol> driver must be enabled.
+      </para>
   </chapter>
   <chapter id="CommonBackEndReq">
     <title>The common backend (required)</title>
