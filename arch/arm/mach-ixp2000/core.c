@@ -34,6 +34,7 @@
 #include <asm/system.h>
 #include <asm/tlbflush.h>
 #include <asm/pgtable.h>
+#include <asm/kgdb.h>
 
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
@@ -184,6 +185,9 @@ static struct platform_device ixp2000_serial_device = {
 void __init ixp2000_uart_init(void)
 {
 	platform_device_register(&ixp2000_serial_device);
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_platform_port(0, &ixp2000_serial_port);
+#endif
 }
 
 

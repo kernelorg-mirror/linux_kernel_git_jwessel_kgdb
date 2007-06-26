@@ -14,7 +14,7 @@ config KGDB
 	bool "KGDB: kernel debugging with remote gdb"
 	select WANT_EXTRA_DEBUG_INFORMATION
 	select KGDB_ARCH_HAS_SHADOW_INFO if X86_64
-	depends on DEBUG_KERNEL && (X86 || MIPS || (SUPERH && !SUPERH64) || IA64 || PPC)
+	depends on DEBUG_KERNEL && (ARM || X86 || MIPS || (SUPERH && !SUPERH64) || IA64 || PPC)
 	help
 	  If you say Y here, it will be possible to remotely debug the
 	  kernel using gdb.  Documentation of kernel debugger is available
@@ -45,6 +45,8 @@ choice
 	default KGDB_SIBYTE if SIBYTE_SB1xxx_SOC
  	default KGDB_TXX9 if CPU_TX49XX
 	default KGDB_SH_SCI if SERIAL_SH_SCI
+	default KGDB_PXA_SERIAL if ARCH_PXA
+	default KGDB_AMBA_PL011 if ARM_AMBA
 	default KGDB_8250_NOMODULE
 	help
 	  There are a number of different ways in which you can communicate
@@ -109,6 +111,34 @@ config KGDB_SH_SCI
 	depends on SUPERH && SERIAL_SH_SCI
 	help
 	  Uses the SH SCI(F) serial port to communicate with the host GDB.
+
+config KGDB_AMBA_PL011
+	bool "KGDB: On ARM AMBA PL011 Serial Port"
+	depends on ARM && ARCH_VERSATILE
+	help
+	  Enables the KGDB serial driver for the AMBA bus PL011 serial
+          devices from ARM.
+
+config KGDB_PXA_SERIAL
+	bool "KGDB: On the PXA2xx serial port"
+	depends on ARCH_PXA
+	help
+	  Enables the KGDB serial driver for Intel PXA SOC
+endchoice
+
+choice
+	prompt "PXA UART to use for KGDB"
+	depends on KGDB_PXA_SERIAL
+	default KGDB_PXA_FFUART
+
+config KGDB_PXA_FFUART
+	bool "FFUART"
+
+config KGDB_PXA_BTUART
+	bool "BTUART"
+
+config KGDB_PXA_STUART
+	bool "STUART"
 endchoice
 
 choice
@@ -176,7 +206,7 @@ config KGDB_BAUDRATE
 	int "Debug serial port baud rate"
 	depends on (KGDB_8250 && KGDB_SIMPLE_SERIAL) || \
 		KGDB_MPSC || KGDB_CPM_UART || \
-		KGDB_TXX9
+		KGDB_TXX9 || KGDB_PXA_SERIAL || KGDB_AMBA_PL011
 	default "115200"
 	help
 	  gdb and the kernel stub need to agree on the baud rate to be
@@ -191,6 +221,27 @@ config KGDB_PORT_NUM
 	default "1"
 	help
 	  Pick the port number (0 based) for KGDB to use.
+
+config KGDB_AMBA_BASE
+	hex "AMBA PL011 Serial Port Base Address"
+	default 0x101f2000 if ARCH_VERSATILE
+	depends on KGDB_AMBA_PL011
+	help
+	  Base address of the AMBA port that KGDB will use.
+
+config KGDB_AMBA_UARTCLK
+	int "AMBAPL011 Serial UART Clock Frequency"
+	default 24000000 if ARCH_VERSATILE
+	depends on KGDB_AMBA_PL011
+	help
+	  Frequency (in HZ) of the ARM AMBA UART clock
+
+config KGDB_AMBA_IRQ
+	int "AMBA PL011 Serial Port IRQ"
+	default 13 if ARCH_VERSATILE
+	depends on KGDB_AMBA_PL011
+	help
+	  Pick the IRQ of the AMBA port that KGDB will use.
 
 config KGDB_8250_CONF_STRING
 	string "Configuration string for KGDB"
