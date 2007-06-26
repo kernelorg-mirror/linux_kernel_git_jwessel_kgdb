@@ -45,6 +45,7 @@ extern struct tasklet_struct kgdb_tasklet_breakpoint;
 
 extern atomic_t kgdb_setting_breakpoint;
 extern atomic_t cpu_doing_single_step;
+extern atomic_t kgdb_sync_softlockup[NR_CPUS];
 
 extern struct task_struct *kgdb_usethread, *kgdb_contthread;
 

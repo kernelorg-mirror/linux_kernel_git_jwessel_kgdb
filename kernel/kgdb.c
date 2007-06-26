@@ -129,6 +129,8 @@ struct debuggerinfo_struct {
 /* to keep track of the CPU which is doing the single stepping*/
 atomic_t cpu_doing_single_step = ATOMIC_INIT(-1);
 
+atomic_t  kgdb_sync_softlockup[NR_CPUS] = {ATOMIC_INIT(0)};
+
 /* reboot notifier block */
 static struct notifier_block kgdb_reboot_notifier = {
 	.notifier_call  = kgdb_notify_reboot,
@@ -608,6 +610,7 @@ static void kgdb_wait(struct pt_regs *regs)
 	kgdb_info[processor].debuggerinfo = regs;
 	kgdb_info[processor].task = current;
 	atomic_set(&procindebug[processor], 1);
+	atomic_set(&kgdb_sync_softlockup[raw_smp_processor_id()], 1);
 
 	/* Wait till master processor goes completely into the debugger.
 	 * FIXME: this looks racy */
@@ -931,6 +934,8 @@ int kgdb_handle_exception(int ex_vector, int signo, int err_code,
 				atomic_read(&cpu_doing_single_step) != procid)
 			udelay(1);
 	}
+
+	atomic_set(&kgdb_sync_softlockup[raw_smp_processor_id()], 1);
 
 	/*
 	 * Don't enter if the last instance of the exception handler wanted to
