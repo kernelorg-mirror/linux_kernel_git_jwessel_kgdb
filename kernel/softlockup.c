@@ -14,6 +14,7 @@
 #include <linux/kthread.h>
 #include <linux/notifier.h>
 #include <linux/module.h>
+#include <linux/kgdb.h>
 
 static DEFINE_SPINLOCK(print_lock);
 
@@ -47,6 +48,10 @@ static unsigned long get_timestamp(void)
 
 void touch_softlockup_watchdog(void)
 {
+#ifdef CONFIG_KGDB
+	if (unlikely(kgdb_softlock_skip[smp_processor_id()]))
+		kgdb_softlock_skip[smp_processor_id()] = 0;
+#endif
 	__raw_get_cpu_var(touch_timestamp) = get_timestamp();
 }
 EXPORT_SYMBOL(touch_softlockup_watchdog);
@@ -99,6 +104,10 @@ void softlockup_tick(void)
 
 	/* Warn about unreasonable 10+ seconds delays: */
 	if (now > (touch_timestamp + 10)) {
+#ifdef CONFIG_KGDB
+		if (unlikely(kgdb_softlock_skip[this_cpu]))
+			return;
+#endif
 		per_cpu(print_timestamp, this_cpu) = touch_timestamp;
 
 		spin_lock(&print_lock);

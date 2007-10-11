@@ -136,6 +136,7 @@ struct debuggerinfo_struct {
 
 /* to keep track of the CPU which is doing the single stepping*/
 atomic_t cpu_doing_single_step = ATOMIC_INIT(-1);
+int kgdb_softlock_skip[NR_CPUS];
 
 /* reboot notifier block */
 static struct notifier_block kgdb_reboot_notifier = {
@@ -664,6 +665,7 @@ static void kgdb_wait(struct pt_regs *regs)
 	atomic_set(&procindebug[processor], 0);
 	spin_unlock(&slavecpulocks[processor]);
 	clocksource_touch_watchdog();
+	kgdb_softlock_skip[processor] = 1;
 	local_irq_restore(flags);
 }
 #endif
@@ -1005,6 +1007,7 @@ int kgdb_handle_exception(int ex_vector, int signo, int err_code,
 		atomic_set(&debugger_active, 0);
 		atomic_set(&kgdb_sync, -1);
 		clocksource_touch_watchdog();
+		kgdb_softlock_skip[procid] = 1;
 		local_irq_restore(flags);
 		goto acquirelock;
 	}
@@ -1553,6 +1556,7 @@ default_handle:
 	atomic_set(&debugger_active, 0);
 	atomic_set(&kgdb_sync, -1);
 	clocksource_touch_watchdog();
+	kgdb_softlock_skip[processor] = 1;
 	local_irq_restore(flags);
 
 	return error;
