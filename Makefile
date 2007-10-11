@@ -484,10 +484,14 @@ endif # $(dot-config)
 all: vmlinux
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-CFLAGS		+= -Os
+COPTIMIZE	= -Os
 else
-CFLAGS		+= -O2
+COPTIMIZE	= -O2
 endif
+# COPTIMIZE may be overridden on the make command line with
+# 	make ... COPTIMIZE=""
+# The resulting object may be easier to debug with KGDB
+CFLAGS		+= $(COPTIMIZE)
 
 include $(srctree)/arch/$(ARCH)/Makefile
 
@@ -499,6 +503,7 @@ endif
 
 ifdef CONFIG_DEBUG_INFO
 CFLAGS		+= -g
+AFLAGS		+= -gdwarf-2
 endif
 
 # Force gcc to behave correct even for buggy distributions
