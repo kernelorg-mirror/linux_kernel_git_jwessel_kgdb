@@ -31,6 +31,7 @@
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
 #include <linux/ethtool.h>
+#include <linux/kgdb.h>
 
 #include <asm/system.h>
 #include <asm/pgtable.h>
@@ -338,9 +339,12 @@ bamboo_early_serial_map(void)
 		printk("Early serial init of port 0 failed\n");
 	}
 
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	/* Configure debug serial access */
 	gen550_init(0, &port);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_port(0, &port);
 #endif
 
 	port.membase = ioremap64(PPC440EP_UART1_ADDR, 8);
@@ -352,9 +356,12 @@ bamboo_early_serial_map(void)
 		printk("Early serial init of port 1 failed\n");
 	}
 
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	/* Configure debug serial access */
 	gen550_init(1, &port);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_port(1, &port);
 #endif
 
 	port.membase = ioremap64(PPC440EP_UART2_ADDR, 8);
@@ -366,9 +373,12 @@ bamboo_early_serial_map(void)
 		printk("Early serial init of port 2 failed\n");
 	}
 
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	/* Configure debug serial access */
 	gen550_init(2, &port);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_port(2, &port);
 #endif
 
 	port.membase = ioremap64(PPC440EP_UART3_ADDR, 8);
@@ -379,6 +389,10 @@ bamboo_early_serial_map(void)
 	if (early_serial_setup(&port) != 0) {
 		printk("Early serial init of port 3 failed\n");
 	}
+
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_add_port(3, &port);
+#endif
 }
 
 static void __init
@@ -436,8 +450,5 @@ void __init platform_init(unsigned long r3, unsigned long r4,
 
 	ppc_md.nvram_read_val = todc_direct_read_val;
 	ppc_md.nvram_write_val = todc_direct_write_val;
-#ifdef CONFIG_KGDB
-	ppc_md.early_serial_map = bamboo_early_serial_map;
-#endif
 }
 
