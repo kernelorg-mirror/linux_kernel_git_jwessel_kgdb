@@ -51,6 +51,7 @@
 #include <linux/sched.h>
 #include <linux/pid_namespace.h>
 #include <asm/byteorder.h>
+#include <linux/clocksource.h>
 
 extern int pid_max;
 /* How many times to count all of the waiting CPUs */
@@ -662,6 +663,7 @@ static void kgdb_wait(struct pt_regs *regs)
 	/* Signal the master processor that we are done */
 	atomic_set(&procindebug[processor], 0);
 	spin_unlock(&slavecpulocks[processor]);
+	clocksource_touch_watchdog();
 	local_irq_restore(flags);
 }
 #endif
@@ -1002,6 +1004,7 @@ int kgdb_handle_exception(int ex_vector, int signo, int err_code,
 	    atomic_read(&cpu_doing_single_step) != procid) {
 		atomic_set(&debugger_active, 0);
 		atomic_set(&kgdb_sync, -1);
+		clocksource_touch_watchdog();
 		local_irq_restore(flags);
 		goto acquirelock;
 	}
@@ -1549,6 +1552,7 @@ default_handle:
 	/* Free debugger_active */
 	atomic_set(&debugger_active, 0);
 	atomic_set(&kgdb_sync, -1);
+	clocksource_touch_watchdog();
 	local_irq_restore(flags);
 
 	return error;
