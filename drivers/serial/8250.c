@@ -2859,6 +2859,25 @@ void serial8250_unregister_port(int line)
 }
 EXPORT_SYMBOL(serial8250_unregister_port);
 
+/**
+ *	serial8250_unregister_by_port - remove a 16x50 serial port
+ *	at runtime.
+ *	@port: A &struct uart_port that describes the port to remove.
+ *
+ *	Remove one serial port.  This may not be called from interrupt
+ *	context.  We hand the port back to the our control.
+ */
+void serial8250_unregister_by_port(struct uart_port *port)
+{
+	struct uart_8250_port *uart;
+
+	uart = serial8250_find_match_or_unused(port);
+
+	if (uart)
+		serial8250_unregister_port(uart->port.line);
+}
+EXPORT_SYMBOL(serial8250_unregister_by_port);
+
 static int __init serial8250_init(void)
 {
 	int ret, i;
