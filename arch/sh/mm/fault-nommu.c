@@ -28,11 +28,6 @@ asmlinkage void __kprobes do_page_fault(struct pt_regs *regs,
 	trace_hardirqs_on();
 	local_irq_enable();
 
-#if defined(CONFIG_SH_KGDB)
-	if (kgdb_nofault && kgdb_bus_err_hook)
-		kgdb_bus_err_hook();
-#endif
-
 	/*
 	 * Oops. The kernel tried to access some bad page. We'll have to
 	 * terminate things with extreme prejudice.
@@ -55,10 +50,5 @@ asmlinkage int __kprobes __do_page_fault(struct pt_regs *regs,
 					 unsigned long writeaccess,
 					 unsigned long address)
 {
-#if defined(CONFIG_SH_KGDB)
-	if (kgdb_nofault && kgdb_bus_err_hook)
-		kgdb_bus_err_hook();
-#endif
-
 	return (address >= TASK_SIZE);
 }

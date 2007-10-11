@@ -119,7 +119,8 @@ static int get_char(struct uart_port *port)
 	do {
 		status = sci_in(port, SCxSR);
 		if (status & SCxSR_ERRORS(port)) {
-			handle_error(port);
+			/* Clear error flags. */
+			sci_out(port, SCxSR, SCxSR_ERROR_CLEAR(port));
 			continue;
 		}
 	} while (!(status & SCxSR_RDxF(port)));
@@ -161,6 +162,7 @@ static void put_string(struct sci_port *sci_port, const char *buffer, int count)
 
 #if defined(CONFIG_SH_STANDARD_BIOS) || defined(CONFIG_SH_KGDB)
 	int checksum;
+	const char hexchars[] = "0123456789abcdef";
 	int usegdb=0;
 
 #ifdef CONFIG_SH_STANDARD_BIOS
@@ -185,18 +187,18 @@ static void put_string(struct sci_port *sci_port, const char *buffer, int count)
 			int h, l;
 
 			c = *p++;
-			h = highhex(c);
-			l = lowhex(c);
+			h = hexchars[c >> 4];
+			l = hexchars[c % 16];
 			put_char(port, h);
 			put_char(port, l);
 			checksum += h + l;
 		}
 		put_char(port, '#');
-		put_char(port, highhex(checksum));
-		put_char(port, lowhex(checksum));
+		put_char(port, hexchars[checksum >> 4]);
+		put_char(port, hexchars[checksum & 16]);
 	    } while  (get_char(port) != '+');
 	} else
-#endif /* CONFIG_SH_STANDARD_BIOS || CONFIG_SH_KGDB */
+#endif /* CONFIG_SH_STANDARD_BIOS */
 	for (i=0; i<count; i++) {
 		if (*p == 10)
 			put_char(port, '\r');

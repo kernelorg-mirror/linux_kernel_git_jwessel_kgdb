@@ -1,6 +1,6 @@
 #include <linux/linkage.h>
 
-ENTRY(setjmp)
+ENTRY(kgdb_fault_setjmp)
 	add	#(9*4), r4
 	sts.l	pr, @-r4
 	mov.l	r15, @-r4
@@ -14,7 +14,7 @@ ENTRY(setjmp)
 	rts
 	 mov	#0, r0
 
-ENTRY(longjmp)
+ENTRY(kgdb_fault_longjmp)
 	mov.l	@r4+, r8
 	mov.l	@r4+, r9
 	mov.l	@r4+, r10
@@ -27,7 +27,6 @@ ENTRY(longjmp)
 	mov	r5, r0
 	tst	r0, r0
 	bf	1f
-	mov	#1, r0	! in case val==0
+	mov	#1, r0
 1:	rts
 	 nop
-
