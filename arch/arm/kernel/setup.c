@@ -37,6 +37,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/irq.h>
 #include <asm/mach/time.h>
+#include <asm/traps.h>
 
 #include "compat.h"
 
@@ -879,6 +880,10 @@ void __init setup_arch(char **cmdline_p)
 #elif defined(CONFIG_DUMMY_CONSOLE)
 	conswitchp = &dummy_con;
 #endif
+#endif
+
+#if defined(CONFIG_KGDB)
+	early_trap_init();
 #endif
 }
 

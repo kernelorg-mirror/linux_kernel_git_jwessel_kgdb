@@ -8,6 +8,7 @@ mainmenu "Linux Kernel Configuration"
 config ARM
 	bool
 	default y
+	select HAVE_ARCH_KGDB
 	select RTC_LIB
 	select SYS_SUPPORTS_APM_EMULATION
 	help

@@ -15,4 +15,6 @@ struct undef_hook {
 void register_undef_hook(struct undef_hook *hook);
 void unregister_undef_hook(struct undef_hook *hook);
 
+extern void __init early_trap_init(void);
+
 #endif
