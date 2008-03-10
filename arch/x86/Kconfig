@@ -18,6 +18,7 @@ config X86_64
 ### Arch settings
 config X86
 	bool
+	select HAVE_ARCH_KGDB
 	default y
 
 config GENERIC_TIME
