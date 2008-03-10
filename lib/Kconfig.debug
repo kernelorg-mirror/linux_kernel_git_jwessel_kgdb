@@ -518,3 +518,5 @@ config FAULT_INJECTION_STACKTRACE_FILTER
 	  Provide stacktrace filter for fault-injection capabilities
 
 source "samples/Kconfig"
+
+source "lib/Kconfig.kgdb"
