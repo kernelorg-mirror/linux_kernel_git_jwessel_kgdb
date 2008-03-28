@@ -2,4 +2,6 @@
 # include "processor_32.h"
 #else
 # include "processor_64.h"
+extern void early_trap_init(void);
+
 #endif

@@ -1097,6 +1097,15 @@ asmlinkage void math_state_restore(void)
 	me->fpu_counter++;
 }
 
+/* Set of traps needed for early debugging. */
+void __init early_trap_init(void)
+{
+	set_intr_gate(1, &debug);
+	set_intr_gate(3, &int3);
+	set_intr_gate(14, &page_fault);
+	load_idt((const struct desc_ptr *)&idt_descr);
+}
+
 void __init trap_init(void)
 {
 	set_intr_gate(0,&divide_error);
@@ -1113,7 +1122,6 @@ void __init trap_init(void)
 	set_intr_gate(11,&segment_not_present);
 	set_intr_gate_ist(12,&stack_segment,STACKFAULT_STACK);
 	set_intr_gate(13,&general_protection);
-	set_intr_gate(14,&page_fault);
 	set_intr_gate(15,&spurious_interrupt_bug);
 	set_intr_gate(16,&coprocessor_error);
 	set_intr_gate(17,&alignment_check);

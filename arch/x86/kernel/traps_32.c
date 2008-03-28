@@ -1131,6 +1131,14 @@ static void __init set_task_gate(unsigned int n, unsigned int gdt_entry)
 	_set_gate(n, DESCTYPE_TASK, (void *)0, (gdt_entry<<3));
 }
 
+/* Set of traps needed for early debugging. */
+void __init early_trap_init(void)
+{
+	set_intr_gate(1, &debug);
+	set_system_intr_gate(3, &int3); /* int3 can be called from all */
+	set_intr_gate(14, &page_fault);
+	load_idt(&idt_descr);
+}
 
 void __init trap_init(void)
 {
@@ -1149,9 +1157,7 @@ void __init trap_init(void)
 #endif
 
 	set_trap_gate(0,&divide_error);
-	set_intr_gate(1,&debug);
 	set_intr_gate(2,&nmi);
-	set_system_intr_gate(3, &int3); /* int3/4 can be called from all */
 	set_system_gate(4,&overflow);
 	set_trap_gate(5,&bounds);
 	set_trap_gate(6,&invalid_op);
@@ -1162,7 +1168,6 @@ void __init trap_init(void)
 	set_trap_gate(11,&segment_not_present);
 	set_trap_gate(12,&stack_segment);
 	set_trap_gate(13,&general_protection);
-	set_intr_gate(14,&page_fault);
 	set_trap_gate(15,&spurious_interrupt_bug);
 	set_trap_gate(16,&coprocessor_error);
 	set_trap_gate(17,&alignment_check);
