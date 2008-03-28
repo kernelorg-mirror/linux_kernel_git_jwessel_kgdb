@@ -57,9 +57,6 @@ void __init plat_mem_setup(void)
 
 	serial_init();
 
-#ifdef CONFIG_KGDB
-	kgdb_config();
-#endif
 	mips_reboot_setup();
 }
 
