@@ -2233,6 +2233,12 @@ L:	linux-kernel@vger.kernel.org
 L:	kexec@lists.infradead.org
 S:	Maintained
 
+KGDB
+P:	Jason Wessel
+M:	jason.wessel@windriver.com
+L:	kgdb-bugreport@lists.sourceforge.net
+S:	Maintained
+
 KPROBES
 P:	Prasanna S Panchamukhi
 M:	prasanna@in.ibm.com
