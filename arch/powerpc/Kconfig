@@ -78,6 +78,7 @@ config ARCH_NO_VIRT_TO_BUS
 
 config PPC
 	bool
+	select HAVE_ARCH_KGDB
 	default y
 
 config EARLY_PRINTK

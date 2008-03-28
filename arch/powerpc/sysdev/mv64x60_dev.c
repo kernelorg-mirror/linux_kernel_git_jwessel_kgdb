@@ -30,6 +30,7 @@
  */
 static int __init mv64x60_mpsc_register_shared_pdev(struct device_node *np)
 {
+	extern void kgdbmpsc_set_shared_dev(struct platform_device *);
 	struct platform_device *pdev;
 	struct resource r[2];
 	struct mpsc_shared_pdata pdata;
@@ -75,6 +76,9 @@ static int __init mv64x60_mpsc_register_shared_pdev(struct device_node *np)
 	if (err)
 		goto error;
 
+#ifdef CONFIG_KGDB_MPSC
+	kgdbmpsc_set_shared_dev(pdev);
+#endif
 	return 0;
 
 error:
@@ -85,6 +89,7 @@ error:
 
 static int __init mv64x60_mpsc_device_setup(struct device_node *np, int id)
 {
+	extern void kgdbmpsc_set_mpsc_dev(struct platform_device *, int);
 	struct resource r[5];
 	struct mpsc_pdata pdata;
 	struct platform_device *pdev;
@@ -195,6 +200,9 @@ static int __init mv64x60_mpsc_device_setup(struct device_node *np, int id)
 	if (err)
 		goto error;
 
+#ifdef CONFIG_KGDB_MPSC
+	kgdbmpsc_set_mpsc_dev(pdev, id);
+#endif
 	return 0;
 
 error:

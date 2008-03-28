@@ -41,6 +41,7 @@ config GENERIC_CALIBRATE_DELAY
 
 config PPC
 	bool
+	select HAVE_ARCH_KGDB
 	default y
 
 config PPC32
