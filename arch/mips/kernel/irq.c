@@ -21,10 +21,14 @@
 #include <linux/sched.h>
 #include <linux/seq_file.h>
 #include <linux/kallsyms.h>
+#include <linux/kgdb.h>
 
 #include <asm/atomic.h>
 #include <asm/system.h>
 #include <asm/uaccess.h>
+
+/* Keep track of if we've done certain initialization already or not. */
+int kgdb_early_setup;
 
 static unsigned long irq_map[NR_IRQS / BITS_PER_LONG];
 
@@ -130,19 +134,6 @@ asmlinkage void spurious_interrupt(void)
 	atomic_inc(&irq_err_count);
 }
 
-#ifdef CONFIG_KGDB
-extern void breakpoint(void);
-extern void set_debug_traps(void);
-
-static int kgdb_flag = 1;
-static int __init nokgdb(char *str)
-{
-	kgdb_flag = 0;
-	return 1;
-}
-__setup("nokgdb", nokgdb);
-#endif
-
 void __init init_IRQ(void)
 {
 	int i;
@@ -150,13 +141,15 @@ void __init init_IRQ(void)
 	for (i = 0; i < NR_IRQS; i++)
 		set_irq_noprobe(i);
 
+#ifdef CONFIG_KGDB
+	if (kgdb_early_setup)
+		return;
+#endif
+
 	arch_init_irq();
 
 #ifdef CONFIG_KGDB
-	if (kgdb_flag) {
-		printk("Wait for gdb client connection ...\n");
-		set_debug_traps();
-		breakpoint();
-	}
+	if (kgdb_early_setup == 0)
+		kgdb_early_setup = 1;
 #endif
 }
