@@ -1498,6 +1498,21 @@ kgdb_restore:
 	return error;
 }
 
+/*
+ * GDB places a breakpoint at this function to know dynamically
+ * loaded objects. It's not defined static so that only one instance with this
+ * name exists in the kernel.
+ */
+
+int module_event(struct notifier_block *self, unsigned long val, void *data)
+{
+	return 0;
+}
+
+static struct notifier_block kgdb_module_load_nb = {
+	.notifier_call	= module_event,
+};
+
 int kgdb_nmicallback(int cpu, void *regs)
 {
 #ifdef CONFIG_SMP
@@ -1594,6 +1609,7 @@ static void kgdb_register_callbacks(void)
 	if (!kgdb_io_module_registered) {
 		kgdb_io_module_registered = 1;
 		kgdb_arch_init();
+		register_module_notifier(&kgdb_module_load_nb);
 		register_reboot_notifier(&kgdb_reboot_notifier);
 #ifdef CONFIG_MAGIC_SYSRQ
 		register_sysrq_key('g', &sysrq_gdb_op);
@@ -1614,6 +1630,7 @@ static void kgdb_unregister_callbacks(void)
 	 */
 	if (kgdb_io_module_registered) {
 		unregister_reboot_notifier(&kgdb_reboot_notifier);
+		unregister_module_notifier(&kgdb_module_load_nb);
 		kgdb_io_module_registered = 0;
 		kgdb_arch_exit();
 #ifdef CONFIG_MAGIC_SYSRQ
