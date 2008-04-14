@@ -29,6 +29,7 @@
 #include <linux/initrd.h>
 #include <linux/seq_file.h>
 #include <linux/root_dev.h>
+#include <linux/kgdb8250.h>
 #include <linux/tty.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
@@ -212,6 +213,14 @@ ebony_setup_hose(void)
 
 TODC_ALLOC();
 
+#ifdef CONFIG_KGDB_8250
+static int kgdb8250_ready;
+int kgdb8250_early_debug_ready(void)
+{
+	return kgdb8250_ready;
+}
+#endif
+
 static void __init
 ebony_early_serial_map(void)
 {
@@ -227,14 +236,17 @@ ebony_early_serial_map(void)
 	port.flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST;
 	port.line = 0;
 
-	if (early_serial_setup(&port) != 0) {
+#ifdef CONFIG_SERIAL_8250
+	if (early_serial_setup(&port) != 0)
 		printk("Early serial init of port 0 failed\n");
-	}
+#endif
 
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	/* Configure debug serial access */
 	gen550_init(0, &port);
+#endif
 
+#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB_8250)
 	/* Purge TLB entry added in head_44x.S for early serial access */
 	_tlbie(UART0_IO_BASE, 0);
 #endif
@@ -244,13 +256,18 @@ ebony_early_serial_map(void)
 	port.uartclk = clocks.uart1;
 	port.line = 1;
 
-	if (early_serial_setup(&port) != 0) {
+#ifdef CONFIG_SERIAL_8250
+	if (early_serial_setup(&port) != 1)
 		printk("Early serial init of port 1 failed\n");
-	}
+#endif
 
-#if defined(CONFIG_SERIAL_TEXT_DEBUG) || defined(CONFIG_KGDB)
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
 	/* Configure debug serial access */
 	gen550_init(1, &port);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_ready = 1;
+	kgdb8250_arch_init();
 #endif
 }
 
@@ -328,8 +345,4 @@ void __init platform_init(unsigned long r3, unsigned long r4,
 
 	ppc_md.nvram_read_val = todc_direct_read_val;
 	ppc_md.nvram_write_val = todc_direct_write_val;
-#ifdef CONFIG_KGDB
-	ppc_md.early_serial_map = ebony_early_serial_map;
-#endif
 }
-

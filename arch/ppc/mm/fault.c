@@ -25,6 +25,7 @@
 #include <linux/interrupt.h>
 #include <linux/highmem.h>
 #include <linux/module.h>
+#include <linux/kgdb.h>
 
 #include <asm/page.h>
 #include <asm/pgtable.h>

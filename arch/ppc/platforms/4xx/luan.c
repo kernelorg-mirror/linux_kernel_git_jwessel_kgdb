@@ -28,6 +28,7 @@
 #include <linux/seq_file.h>
 #include <linux/root_dev.h>
 #include <linux/tty.h>
+#include <linux/kgdb8250.h>
 #include <linux/serial.h>
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
@@ -271,6 +272,14 @@ luan_setup_hoses(void)
 
 TODC_ALLOC();
 
+#ifdef CONFIG_KGDB_8250
+static int kgdb8250_ready;
+int kgdb8250_early_debug_ready(void)
+{
+	return kgdb8250_ready;
+}
+#endif
+
 static void __init
 luan_early_serial_map(void)
 {
@@ -307,6 +316,10 @@ luan_early_serial_map(void)
 	if (early_serial_setup(&port) != 0) {
 		printk("Early serial init of port 2 failed\n");
 	}
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_ready = 1;
+	kgdb8250_arch_init();
+#endif
 }
 
 static void __init
@@ -366,7 +379,4 @@ void __init platform_init(unsigned long r3, unsigned long r4,
 	ppc_md.get_irq = NULL;		/* Set in ppc4xx_pic_init() */
 
 	ppc_md.calibrate_decr = luan_calibrate_decr;
-#ifdef CONFIG_KGDB
-	ppc_md.early_serial_map = luan_early_serial_map;
-#endif
 }

@@ -44,6 +44,7 @@ config PPC
 	default y
 	select HAVE_IDE
 	select HAVE_OPROFILE
+	select HAVE_ARCH_KGDB
 	select HAVE_KPROBES
 
 config PPC32
