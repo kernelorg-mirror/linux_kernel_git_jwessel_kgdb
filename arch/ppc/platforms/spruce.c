@@ -25,6 +25,7 @@
 #include <linux/root_dev.h>
 #include <linux/serial.h>
 #include <linux/tty.h>
+#include <linux/kgdb8250.h>
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
 
@@ -37,9 +38,9 @@
 #include <asm/time.h>
 #include <asm/todc.h>
 #include <asm/bootinfo.h>
-#include <asm/kgdb.h>
 
 #include <syslib/cpc700.h>
+#include <syslib/gen550.h>
 
 #include "spruce.h"
 
@@ -178,12 +179,12 @@ spruce_early_serial_map(void)
 	serial_req.membase = (u_char *)UART0_IO_BASE;
 	serial_req.regshift = 0;
 
-#if defined(CONFIG_KGDB) || defined(CONFIG_SERIAL_TEXT_DEBUG)
-	gen550_init(0, &serial_req);
-#endif
 #ifdef CONFIG_SERIAL_8250
 	if (early_serial_setup(&serial_req) != 0)
 		printk("Early serial init of port 0 failed\n");
+#endif
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
+	gen550_init(0, &serial_req);
 #endif
 
 	/* Assume early_serial_setup() doesn't modify serial_req */
@@ -191,16 +192,28 @@ spruce_early_serial_map(void)
 	serial_req.irq = UART1_INT;
 	serial_req.membase = (u_char *)UART1_IO_BASE;
 
-#if defined(CONFIG_KGDB) || defined(CONFIG_SERIAL_TEXT_DEBUG)
-	gen550_init(1, &serial_req);
-#endif
 #ifdef CONFIG_SERIAL_8250
 	if (early_serial_setup(&serial_req) != 0)
 		printk("Early serial init of port 1 failed\n");
 #endif
+#ifdef CONFIG_SERIAL_TEXT_DEBUG
+	gen550_init(1, &serial_req);
+#endif
+#ifdef CONFIG_KGDB_8250
+	kgdb8250_ready = 1;
+	kgdb8250_arch_init();
+#endif
 }
 
 TODC_ALLOC();
+
+#ifdef CONFIG_KGDB_8250
+static int kgdb8250_ready;
+int kgdb8250_early_debug_ready(void)
+{
+	return kgdb8250_ready;
+}
+#endif
 
 static void __init
 spruce_setup_arch(void)
@@ -316,7 +329,4 @@ platform_init(unsigned long r3, unsigned long r4, unsigned long r5,
 #ifdef CONFIG_SERIAL_TEXT_DEBUG
 	ppc_md.progress = gen550_progress;
 #endif /* CONFIG_SERIAL_TEXT_DEBUG */
-#ifdef CONFIG_KGDB
-	ppc_md.kgdb_map_scc = gen550_kgdb_map_scc;
-#endif
 }
