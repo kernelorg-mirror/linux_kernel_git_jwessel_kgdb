@@ -601,6 +601,7 @@ void __init setup_arch(char **cmdline_p)
 	printk(KERN_INFO "Command line: %s\n", boot_command_line);
 #endif
 
+	early_trap_init();
 	early_cpu_init();
 	early_ioremap_init();
 
