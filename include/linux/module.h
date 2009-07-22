@@ -315,11 +315,13 @@ struct module
 	unsigned int num_symtab;
 	char *strtab;
 
-	/* Section attributes */
-	struct module_sect_attrs *sect_attrs;
-
 	/* Notes attributes */
 	struct module_notes_attrs *notes_attrs;
+#endif
+
+#if defined(CONFIG_KALLSYMS) || defined(CONFIG_KGDB_MODULES)
+	/* Section attributes */
+	struct module_sect_attrs *sect_attrs;
 #endif
 
 	/* Per-cpu data. */
