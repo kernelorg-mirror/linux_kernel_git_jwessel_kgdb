@@ -31,6 +31,7 @@ static struct kparam_string kps = {
 
 static struct tty_driver	*kgdb_tty_driver;
 static int			kgdb_tty_line;
+static struct file		*kgdb_filp;
 
 static int kgdboc_option_setup(char *opt)
 {
@@ -73,6 +74,16 @@ static int kgdboc_rx_callback(u8 c)
 
 __setup("kgdboc=", kgdboc_option_setup);
 
+static void release_kgdboc_tty(void)
+{
+	if (kgdb_tty_driver)
+		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
+						NULL, (void *)-1);
+	if (kgdb_filp)
+		tty_console_poll_close(&kgdb_filp);
+	kgdb_tty_driver = NULL;
+}
+
 static int configure_kgdboc(void)
 {
 	struct tty_driver *p;
@@ -86,10 +97,7 @@ static int configure_kgdboc(void)
 
 	err = -ENODEV;
 	/* If a driver was previously configured remove it now */
-	if (kgdb_tty_driver)
-		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
-						NULL, (void *)-1);
-	kgdb_tty_driver = NULL;
+	release_kgdboc_tty();
 
 	p = tty_find_polling_driver(config, &tty_line);
 	if (!p)
@@ -118,6 +126,11 @@ static int configure_kgdboc(void)
 	if (p->ops->poll_init(p, tty_line, str, kgdboc_rx_callback))
 		goto noconfig;
 
+	/* Open the port and obtain a tty which call low level driver startup */
+	if (tty_console_poll_open(kgdb_tty_driver, &kgdb_filp,
+				  kgdb_tty_line) != 0)
+		goto noconfig;
+
 	err = kgdb_register_io_module(&kgdboc_io_ops);
 	if (err)
 		goto noconfig;
@@ -127,10 +140,7 @@ static int configure_kgdboc(void)
 	return 0;
 
 noconfig:
-	if (kgdb_tty_driver)
-		kgdb_tty_driver->ops->poll_init(kgdb_tty_driver, kgdb_tty_line,
-						NULL, (void *)-1);
-	kgdb_tty_driver = NULL;
+	release_kgdboc_tty();
 	config[0] = 0;
 	configured = 0;
 
