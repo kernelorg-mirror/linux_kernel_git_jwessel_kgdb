@@ -311,13 +311,8 @@ struct tty_driver *tty_find_polling_driver(char *name, int *line)
 	list_for_each_entry(p, &tty_drivers, tty_drivers) {
 		if (strncmp(name, p->name, len) != 0)
 			continue;
-		if (*str == ',')
-			str++;
-		if (*str == '\0')
-			str = NULL;
-
 		if (tty_line >= 0 && tty_line <= p->num && p->ops &&
-		    p->ops->poll_init && !p->ops->poll_init(p, tty_line, str)) {
+		    p->ops->poll_init) {
 			res = tty_driver_kref_get(p);
 			*line = tty_line;
 			break;
