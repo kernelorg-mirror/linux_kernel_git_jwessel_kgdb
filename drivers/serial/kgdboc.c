@@ -220,13 +220,19 @@ static int param_set_kgdboc_var(const char *kmessage, struct kernel_param *kp)
 	return configure_kgdboc();
 }
 
+static int dbg_restore_graphics;
+
 static void kgdboc_pre_exp_handler(void)
 {
-	if (kgdboc_use_kms && dbg_kms_console_core &&
-	    dbg_kms_console_core->activate_console)
-		if (dbg_kms_console_core->activate_console(dbg_kms_console_core))
+	if (!dbg_restore_graphics && kgdboc_use_kms && dbg_kms_console_core &&
+	    dbg_kms_console_core->activate_console) {
+		if (dbg_kms_console_core->activate_console(dbg_kms_console_core)) {
 			printk(KERN_ERR "kgdboc: kernel mode switch error\n");
-
+		} else {
+			dbg_restore_graphics = 1;
+			dbg_pre_vt_hook();
+		}
+	}
 	/* Increment the module count when the debugger is active */
 	if (!kgdb_connected)
 		try_module_get(THIS_MODULE);
@@ -238,9 +244,14 @@ static void kgdboc_post_exp_handler(void)
 	if (!kgdb_connected)
 		module_put(THIS_MODULE);
 	if (kgdboc_use_kms && dbg_kms_console_core &&
-	    dbg_kms_console_core->restore_console)
-		if (dbg_kms_console_core->restore_console(dbg_kms_console_core))
-			printk(KERN_ERR "kgdboc: graphics restore failed\n");
+	    dbg_kms_console_core->restore_console) {
+		if (dbg_restore_graphics) {
+			if (dbg_kms_console_core->restore_console(dbg_kms_console_core))
+				printk(KERN_ERR "kgdboc: graphics restore failed\n");
+			dbg_restore_graphics = 0;
+			dbg_post_vt_hook();
+		}
+	}
 	kgdboc_clear_kbd();
 }
 

@@ -286,6 +286,14 @@ extern atomic_t			kgdb_active;
 #endif /* CONFIG_KGDB */
 
 /* Common to all that include kgdb.h */
+#ifdef CONFIG_VT
+extern void dbg_pre_vt_hook(void);
+extern void dbg_post_vt_hook(void);
+#else /* ! CONFIG_VT */
+#define dbg_pre_vt_hook()
+#define dbg_post_vt_hook()
+#endif /* CONFIG_VT */
+
 struct dbg_kms_console_ops {
 	int (*activate_console) (struct dbg_kms_console_ops *ops);
 	int (*restore_console) (struct dbg_kms_console_ops *ops);
@@ -295,6 +303,14 @@ struct dbg_kms_console_ops {
 extern struct dbg_kms_console_ops *dbg_kms_console_core;
 extern int dbg_kms_console_ops_register(struct dbg_kms_console_ops *ops);
 extern int dbg_kms_console_ops_unregister(struct dbg_kms_console_ops *ops);
+#define in_dbg_master() \
+	(raw_smp_processor_id() == atomic_read(&kgdb_active))
+#define dbg_safe_mutex_lock(x) \
+	if (!in_dbg_master()) \
+		mutex_lock(x)
+#define dbg_safe_mutex_unlock(x) \
+	if (!in_dbg_master()) \
+		mutex_unlock(x)
 #else /* ! CONFIG_KGDB */
 static inline int dbg_kms_console_ops_register(struct dbg_kms_console_ops *ops)
 {
@@ -304,5 +320,8 @@ static inline int dbg_kms_console_ops_unregister(struct dbg_kms_console_ops *ops
 {
        return 0;
 }
+#define in_dbg_master() (0)
+#define dbg_safe_mutex_lock(x) mutex_lock(x)
+#define dbg_safe_mutex_unlock(x) mutex_unlock(x)
 #endif /* ! CONFIG_KGDB */
 #endif /* _KGDB_H_ */

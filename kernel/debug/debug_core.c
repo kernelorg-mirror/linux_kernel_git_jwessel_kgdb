@@ -106,6 +106,7 @@ static struct kgdb_bkpt		kgdb_break[KGDB_MAX_BREAKPOINTS] = {
  * The CPU# of the active CPU, or -1 if none:
  */
 atomic_t			kgdb_active = ATOMIC_INIT(-1);
+EXPORT_SYMBOL_GPL(kgdb_active);
 
 /*
  * We use NR_CPUs not PERCPU, in case kgdb is used to debug early
