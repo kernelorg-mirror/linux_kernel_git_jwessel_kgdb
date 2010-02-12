@@ -28,9 +28,16 @@ struct kgdb_state {
 	struct pt_regs		*linux_regs;
 };
 
+/* Exception state values */
+#define DCPU_WANT_MASTER 0x1 /* Waiting to become a master kgdb cpu */
+#define DCPU_NEXT_MASTER 0x2 /* Transition from one master cpu to another */
+#define DCPU_IS_SLAVE    0x4 /* Slave cpu enter exception */
+#define DCPU_SSTEP       0x8 /* CPU is single stepping */
+
 struct debuggerinfo_struct {
 	void			*debuggerinfo;
 	struct task_struct	*task;
+	int exception_state;
 };
 
 extern struct debuggerinfo_struct kgdb_info[];
