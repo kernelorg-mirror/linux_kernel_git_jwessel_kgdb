@@ -874,6 +874,13 @@ intel_find_pll_g4x_dp(const intel_limit_t *limit, struct drm_crtc *crtc,
 void
 intel_wait_for_vblank(struct drm_device *dev)
 {
+	if (in_dbg_master()) {
+		/* When in the kernel debugger we cannot sleep */
+		preempt_disable();
+		mdelay(20);
+		preempt_enable();
+		return;
+	}
 	/* Wait for 20ms, i.e. one cycle at 50hz. */
 	msleep(20);
 }
@@ -1296,17 +1303,17 @@ intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	obj = intel_fb->obj;
 	obj_priv = obj->driver_private;
 
-	mutex_lock(&dev->struct_mutex);
+	dbg_safe_mutex_lock(&dev->struct_mutex);
 	ret = intel_pin_and_fence_fb_obj(dev, obj);
 	if (ret != 0) {
-		mutex_unlock(&dev->struct_mutex);
+		dbg_safe_mutex_unlock(&dev->struct_mutex);
 		return ret;
 	}
 
 	ret = i915_gem_object_set_to_display_plane(obj);
 	if (ret != 0) {
 		i915_gem_object_unpin(obj);
-		mutex_unlock(&dev->struct_mutex);
+		dbg_safe_mutex_unlock(&dev->struct_mutex);
 		return ret;
 	}
 
@@ -1333,7 +1340,7 @@ intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	default:
 		DRM_ERROR("Unknown color depth\n");
 		i915_gem_object_unpin(obj);
-		mutex_unlock(&dev->struct_mutex);
+		dbg_safe_mutex_unlock(&dev->struct_mutex);
 		return -EINVAL;
 	}
 	if (IS_I965G(dev)) {
@@ -1377,7 +1384,7 @@ intel_pipe_set_base(struct drm_crtc *crtc, int x, int y,
 	}
 	intel_increase_pllclock(crtc, true);
 
-	mutex_unlock(&dev->struct_mutex);
+	dbg_safe_mutex_unlock(&dev->struct_mutex);
 
 	if (!dev->primary->master)
 		return 0;

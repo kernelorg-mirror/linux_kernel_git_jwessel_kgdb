@@ -396,9 +396,9 @@ static void drm_fb_helper_on(struct fb_info *info)
 			    !crtc->enabled)
 				continue;
 
-			mutex_lock(&dev->mode_config.mutex);
+			dbg_safe_mutex_lock(&dev->mode_config.mutex);
 			crtc_funcs->dpms(crtc, DRM_MODE_DPMS_ON);
-			mutex_unlock(&dev->mode_config.mutex);
+			dbg_safe_mutex_unlock(&dev->mode_config.mutex);
 
 			/* Found a CRTC on this fb, now find encoders */
 			list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
@@ -406,9 +406,9 @@ static void drm_fb_helper_on(struct fb_info *info)
 					struct drm_encoder_helper_funcs *encoder_funcs;
 
 					encoder_funcs = encoder->helper_private;
-					mutex_lock(&dev->mode_config.mutex);
+					dbg_safe_mutex_lock(&dev->mode_config.mutex);
 					encoder_funcs->dpms(encoder, DRM_MODE_DPMS_ON);
-					mutex_unlock(&dev->mode_config.mutex);
+					dbg_safe_mutex_unlock(&dev->mode_config.mutex);
 				}
 			}
 		}
@@ -819,9 +819,9 @@ int drm_fb_helper_pan_display(struct fb_var_screeninfo *var,
 		modeset->y = var->yoffset;
 
 		if (modeset->num_connectors) {
-			mutex_lock(&dev->mode_config.mutex);
+			dbg_safe_mutex_lock(&dev->mode_config.mutex);
 			ret = crtc->funcs->set_config(modeset);
-			mutex_unlock(&dev->mode_config.mutex);
+			dbg_safe_mutex_unlock(&dev->mode_config.mutex);
 			if (!ret) {
 				info->var.xoffset = var->xoffset;
 				info->var.yoffset = var->yoffset;
