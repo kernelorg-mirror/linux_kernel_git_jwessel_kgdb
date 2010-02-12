@@ -284,4 +284,14 @@ extern int kgdb_nmicallback(int cpu, void *regs);
 extern int			kgdb_single_step;
 extern atomic_t			kgdb_active;
 #endif /* CONFIG_KGDB */
+
+/* Common to all that include kgdb.h */
+struct dbg_kms_console_ops {
+	int (*activate_console) (void);
+	int (*restore_console) (void);
+};
+
+#ifdef CONFIG_KGDB
+extern struct dbg_kms_console_ops *dbg_kms_console_core;
+#endif
 #endif /* _KGDB_H_ */
