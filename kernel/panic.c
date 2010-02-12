@@ -66,10 +66,13 @@ NORET_TYPE void panic(const char * fmt, ...)
 	 */
 	preempt_disable();
 
-	bust_spinlocks(1);
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
+
+	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
+
+	bust_spinlocks(1);
 	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	dump_stack();
@@ -90,8 +93,6 @@ NORET_TYPE void panic(const char * fmt, ...)
 	 * situation.
 	 */
 	smp_send_stop();
-
-	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
 
 	bust_spinlocks(0);
 
