@@ -14,7 +14,7 @@
 #include <asm/pgtable.h>
 #include "internal.h"
 
-void get_vmalloc_info(struct vmalloc_info *vmi)
+void get_vmalloc_info(struct vmalloc_info *vmi, int lock)
 {
 	struct vm_struct *vma;
 	unsigned long free_area_size;
@@ -30,7 +30,8 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 
 		prev_end = VMALLOC_START;
 
-		read_lock(&vmlist_lock);
+		if (lock)
+			read_lock(&vmlist_lock);
 
 		for (vma = vmlist; vma; vma = vma->next) {
 			unsigned long addr = (unsigned long) vma->addr;
@@ -55,6 +56,7 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 		if (VMALLOC_END - prev_end > vmi->largest_chunk)
 			vmi->largest_chunk = VMALLOC_END - prev_end;
 
-		read_unlock(&vmlist_lock);
+		if (lock)
+			read_unlock(&vmlist_lock);
 	}
 }

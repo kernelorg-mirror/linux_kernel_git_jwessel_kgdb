@@ -10,6 +10,7 @@
 #include <linux/seq_file.h>
 #include <linux/swap.h>
 #include <linux/vmstat.h>
+#include <linux/kdb.h>
 #include <asm/atomic.h>
 #include <asm/page.h>
 #include <asm/pgtable.h>
@@ -19,7 +20,7 @@ void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
 
-static int meminfo_proc_show(struct seq_file *m, void *v)
+int _meminfo_proc_show(struct seq_file *m, void *v, int lock)
 {
 	struct sysinfo i;
 	unsigned long committed;
@@ -34,7 +35,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
  */
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 	si_meminfo(&i);
-	si_swapinfo(&i);
+	if (lock)
+		si_swapinfo(&i);
+	else
+		__si_swapinfo(&i);
 	committed = percpu_counter_read_positive(&vm_committed_as);
 	allowed = ((totalram_pages - hugetlb_total_pages())
 		* sysctl_overcommit_ratio / 100) + total_swap_pages;
@@ -44,7 +48,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	if (cached < 0)
 		cached = 0;
 
-	get_vmalloc_info(&vmi);
+	get_vmalloc_info(&vmi, lock);
 
 	for (lru = LRU_BASE; lru < NR_LRU_LISTS; lru++)
 		pages[lru] = global_page_state(NR_LRU_BASE + lru);
@@ -159,6 +163,11 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 
 	return 0;
 #undef K
+}
+
+static int meminfo_proc_show(struct seq_file *m, void *v)
+{
+	return _meminfo_proc_show(m, v, 1);
 }
 
 static int meminfo_proc_open(struct inode *inode, struct file *file)

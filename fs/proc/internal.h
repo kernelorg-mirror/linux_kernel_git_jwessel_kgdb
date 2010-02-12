@@ -32,11 +32,11 @@ extern struct mm_struct *mm_for_maps(struct task_struct *);
 
 #ifdef CONFIG_MMU
 #define VMALLOC_TOTAL (VMALLOC_END - VMALLOC_START)
-extern void get_vmalloc_info(struct vmalloc_info *vmi);
+extern void get_vmalloc_info(struct vmalloc_info *vmi, int lock);
 #else
 
 #define VMALLOC_TOTAL 0UL
-#define get_vmalloc_info(vmi)			\
+#define get_vmalloc_info(vmi, lock)		\
 do {						\
 	(vmi)->used = 0;			\
 	(vmi)->largest_chunk = 0;		\
