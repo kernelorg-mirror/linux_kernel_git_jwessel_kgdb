@@ -99,6 +99,9 @@ int kdb_process_cpu(const struct task_struct *p)
 	return cpu;
 }
 
+/* kdb access to register set for stack dumping */
+extern struct pt_regs *kdb_current_regs;
+
 #else /* ! CONFIG_KGDB_KDB */
 #define kdb_printf(...)
 #define kdb_init(x)
