@@ -809,12 +809,19 @@ void __kprobes program_check_exception(struct pt_regs *regs)
 		return;
 	}
 	if (reason & REASON_TRAP) {
+
+#ifdef CONFIG_KGDB_LOW_LEVEL_TRAP
+		if (debugger_bpt(regs))
+			return;
+#endif /* CONFIG_KGDB_LOW_LEVEL_TRAP */
 		/* trap exception */
 		if (notify_die(DIE_BPT, "breakpoint", regs, 5, 5, SIGTRAP)
 				== NOTIFY_STOP)
 			return;
+#ifndef CONFIG_KGDB_LOW_LEVEL_TRAP
 		if (debugger_bpt(regs))
 			return;
+#endif /* ! CONFIG_KGDB_LOW_LEVEL_TRAP */
 
 		if (!(regs->msr & MSR_PR) &&  /* not user-mode */
 		    report_bug(regs->nip, regs) == BUG_TRAP_TYPE_WARN) {
