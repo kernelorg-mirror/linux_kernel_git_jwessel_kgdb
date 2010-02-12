@@ -1195,6 +1195,11 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 			if (keycode < BTN_MISC && printk_ratelimit())
 				printk(KERN_WARNING "keyboard.c: can't emulate rawmode for keycode %d\n", keycode);
 
+	if (down)
+		set_bit(keycode, key_down);
+	else
+		clear_bit(keycode, key_down);
+
 #ifdef CONFIG_MAGIC_SYSRQ	       /* Handle the SysRq Hack */
 	if (keycode == KEY_SYSRQ && (sysrq_down || (down == 1 && sysrq_alt))) {
 		if (!sysrq_down) {
@@ -1236,11 +1241,6 @@ static void kbd_keycode(unsigned int keycode, int down, int hw_raw)
 		}
 		raw_mode = 1;
 	}
-
-	if (down)
-		set_bit(keycode, key_down);
-	else
-		clear_bit(keycode, key_down);
 
 	if (rep &&
 	    (!vc_kbd_mode(kbd, VC_REPEAT) ||
@@ -1410,6 +1410,22 @@ static const struct input_device_id kbd_ids[] = {
 
 MODULE_DEVICE_TABLE(input, kbd_ids);
 
+#ifdef CONFIG_KDB_KEYBOARD
+void kbd_clear_keys(void)
+{
+	int i, j, k;
+
+	for (i = 0; i < ARRAY_SIZE(key_down); i++) {
+		k = i * BITS_PER_LONG;
+		for (j = 0; j < BITS_PER_LONG; j++, k++) {
+			if (test_bit(k, key_down)) {
+				kbd_keycode(k, 0, 0);
+			}
+		}
+	}
+}
+#endif
+
 static struct input_handler kbd_handler = {
 	.event		= kbd_event,
 	.connect	= kbd_connect,
@@ -1417,6 +1433,9 @@ static struct input_handler kbd_handler = {
 	.start		= kbd_start,
 	.name		= "kbd",
 	.id_table	= kbd_ids,
+#ifdef CONFIG_KDB_KEYBOARD
+	.dbg_clear_keys = kbd_clear_keys,
+#endif
 };
 
 int __init kbd_init(void)

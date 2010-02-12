@@ -1692,6 +1692,21 @@ int input_register_handler(struct input_handler *handler)
 }
 EXPORT_SYMBOL(input_register_handler);
 
+#ifdef CONFIG_KDB_KEYBOARD
+/* input_db_clear_keys - Clear any keyboards if they have a call back,
+ * after returning from the kernel debugger
+ */
+void input_dbg_clear_keys(void)
+{
+	struct input_handler *handler;
+
+	list_for_each_entry(handler, &input_handler_list, node)
+		if (handler->dbg_clear_keys)
+			handler->dbg_clear_keys();
+}
+EXPORT_SYMBOL_GPL(input_dbg_clear_keys);
+#endif
+
 /**
  * input_unregister_handler - unregisters an input handler
  * @handler: handler to be unregistered

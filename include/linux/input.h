@@ -1231,6 +1231,9 @@ struct input_handler {
 	int (*connect)(struct input_handler *handler, struct input_dev *dev, const struct input_device_id *id);
 	void (*disconnect)(struct input_handle *handle);
 	void (*start)(struct input_handle *handle);
+#ifdef CONFIG_KDB_KEYBOARD
+	void (*dbg_clear_keys)(void);
+#endif
 
 	const struct file_operations *fops;
 	int minor;
@@ -1315,6 +1318,13 @@ int input_flush_device(struct input_handle* handle, struct file* file);
 
 void input_event(struct input_dev *dev, unsigned int type, unsigned int code, int value);
 void input_inject_event(struct input_handle *handle, unsigned int type, unsigned int code, int value);
+
+#ifdef CONFIG_KDB_KEYBOARD
+void input_dbg_clear_keys(void);
+#else
+static inline void input_dbg_clear_keys(void)
+{}
+#endif
 
 static inline void input_report_key(struct input_dev *dev, unsigned int code, int value)
 {
