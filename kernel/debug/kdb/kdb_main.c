@@ -1820,7 +1820,12 @@ static int kdb_sr(int argc, const char **argv)
 {
 	if (argc != 1)
 		return KDB_ARGCOUNT;
-	sysrq_toggle_support(1);
+
+	if (!__sysrq_enabled) {
+		kdb_printf("Auto activating sysrq\n");
+		__sysrq_enabled = 1;
+	}
+
 	kdb_trap_printk++;
 	handle_sysrq(*argv[1], NULL);
 	kdb_trap_printk--;
