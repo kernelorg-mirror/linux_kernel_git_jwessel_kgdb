@@ -342,6 +342,7 @@ GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel
 DEPMOD		= /sbin/depmod
 KALLSYMS	= scripts/kallsyms
+READELF		= scripts/readelf
 PERL		= perl
 CHECK		= sparse
 
@@ -857,10 +858,14 @@ define rule_ksym_ld
 	$(Q)echo 'cmd_$@ := $(cmd_vmlinux__)' > $(@D)/.$(@F).cmd
 endef
 
+KALLSYMS_INPUT_CMD = ($(NM) -n $<; \
+	$(if $(CONFIG_KALLSYMS_LINE_LOCATIONS), \
+	 $(READELF) --debug-dump=line -q $<))
 # Generate .S file with all kernel symbols
 quiet_cmd_kallsyms = KSYM    $@
-      cmd_kallsyms = $(NM) -n $< | $(KALLSYMS) \
-                     $(if $(CONFIG_KALLSYMS_ALL),--all-symbols) > $@
+      cmd_kallsyms = $(KALLSYMS_INPUT_CMD) | $(KALLSYMS) \
+                     $(if $(CONFIG_KALLSYMS_ALL),--all-symbols) \
+		     $(if $(CONFIG_KALLSYMS_LINE_LOCATIONS), --ll-symbols) > $@
 
 .tmp_kallsyms1.o .tmp_kallsyms2.o .tmp_kallsyms3.o: %.o: %.S scripts FORCE
 	$(call if_changed_dep,as_o_S)

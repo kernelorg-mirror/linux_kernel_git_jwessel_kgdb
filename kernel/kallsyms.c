@@ -32,6 +32,9 @@
 #define all_var 0
 #endif
 
+/* Is this a line location type? */
+#define IS_LLOC(pos) (kallsyms_type_table[pos] == 0xff)
+
 /*
  * These will be re-linked against their real values
  * during the second link stage.
@@ -188,9 +191,39 @@ int kallsyms_on_each_symbol(int (*fn)(void *, const char *, struct module *,
 }
 EXPORT_SYMBOL_GPL(kallsyms_on_each_symbol);
 
+static void first_aliased_symbol(unsigned long *low)
+{
+find_alias:
+	while (*low && kallsyms_addresses[*low-1] == kallsyms_addresses[*low])
+		--*low;
+
+	if (*low) {
+		if (*low < kallsyms_num_syms && IS_LLOC(*low) &&
+		    kallsyms_addresses[*low+1] == kallsyms_addresses[*low]) {
+			++*low;
+		} else if (IS_LLOC(*low)) {
+			while (*low && IS_LLOC(*low))
+				--*low;
+			goto find_alias;
+		}
+	}
+}
+
+static void first_aliased_line_loc(unsigned long *low)
+{
+	while (*low && kallsyms_addresses[*low-1] == kallsyms_addresses[*low])
+		--*low;
+	while (*low < kallsyms_num_syms && !IS_LLOC(*low) &&
+	       kallsyms_addresses[*low] == kallsyms_addresses[*low+1])
+		++*low;
+	while (*low && !(IS_LLOC(*low)))
+		--*low;
+}
+
 static unsigned long get_symbol_pos(unsigned long addr,
 				    unsigned long *symbolsize,
-				    unsigned long *offset)
+				    unsigned long *offset,
+				    bool is_line_loc)
 {
 	unsigned long symbol_start = 0, symbol_end = 0;
 	unsigned long i, low, high, mid;
@@ -214,14 +247,16 @@ static unsigned long get_symbol_pos(unsigned long addr,
 	 * Search for the first aliased symbol. Aliased
 	 * symbols are symbols with the same address.
 	 */
-	while (low && kallsyms_addresses[low-1] == kallsyms_addresses[low])
-		--low;
+	if (is_line_loc)
+		first_aliased_line_loc(&low);
+	else
+		first_aliased_symbol(&low);
 
 	symbol_start = kallsyms_addresses[low];
 
 	/* Search for next non-aliased symbol. */
 	for (i = low + 1; i < kallsyms_num_syms; i++) {
-		if (kallsyms_addresses[i] > symbol_start) {
+		if (kallsyms_addresses[i] > symbol_start && !IS_LLOC(low)) {
 			symbol_end = kallsyms_addresses[i];
 			break;
 		}
@@ -253,10 +288,51 @@ int kallsyms_lookup_size_offset(unsigned long addr, unsigned long *symbolsize,
 {
 	char namebuf[KSYM_NAME_LEN];
 	if (is_ksym_addr(addr))
-		return !!get_symbol_pos(addr, symbolsize, offset);
+		return !!get_symbol_pos(addr, symbolsize, offset, false);
 
 	return !!module_address_lookup(addr, symbolsize, offset, NULL, namebuf);
 }
+
+#ifdef CONFIG_KALLSYMS_LINE_LOCATIONS
+/*
+ * Lookup an address
+ * - modname is set to NULL if it's in the kernel.
+ * - We guarantee that the returned name is valid until we reschedule even if.
+ *   It resides in a module.
+ * - We also guarantee that modname will be valid until rescheduled.
+ */
+const char *kallsyms_line_loc_lookup(unsigned long addr,
+			    unsigned long *symbolsize,
+			    unsigned long *offset,
+			    char **modname, char *namebuf)
+{
+	namebuf[KSYM_NAME_LEN - 1] = 0;
+	namebuf[0] = 0;
+
+	if (modname)
+		*modname = NULL;
+	if (is_ksym_addr(addr)) {
+		unsigned long pos;
+
+		pos = get_symbol_pos(addr, symbolsize, offset, true);
+		if (!IS_LLOC(pos))
+			return NULL;
+		/* Grab name */
+		kallsyms_expand_symbol(get_symbol_offset(pos), namebuf);
+		return namebuf;
+	}
+
+	return NULL;
+}
+#else /* !CONFIG_KALLSYMS_LINE_LOCATIONS */
+const char *kallsyms_line_loc_lookup(unsigned long addr,
+			    unsigned long *symbolsize,
+			    unsigned long *offset,
+			    char **modname, char *namebuf)
+{
+	return NULL;
+}
+#endif /* CONFIG_KALLSYMS_LINE_LOCATIONS */
 
 /*
  * Lookup an address
@@ -276,7 +352,7 @@ const char *kallsyms_lookup(unsigned long addr,
 	if (is_ksym_addr(addr)) {
 		unsigned long pos;
 
-		pos = get_symbol_pos(addr, symbolsize, offset);
+		pos = get_symbol_pos(addr, symbolsize, offset, false);
 		/* Grab name */
 		kallsyms_expand_symbol(get_symbol_offset(pos), namebuf);
 		if (modname)
@@ -297,7 +373,7 @@ int lookup_symbol_name(unsigned long addr, char *symname)
 	if (is_ksym_addr(addr)) {
 		unsigned long pos;
 
-		pos = get_symbol_pos(addr, NULL, NULL);
+		pos = get_symbol_pos(addr, NULL, NULL, false);
 		/* Grab name */
 		kallsyms_expand_symbol(get_symbol_offset(pos), symname);
 		return 0;
@@ -315,7 +391,7 @@ int lookup_symbol_attrs(unsigned long addr, unsigned long *size,
 	if (is_ksym_addr(addr)) {
 		unsigned long pos;
 
-		pos = get_symbol_pos(addr, size, offset);
+		pos = get_symbol_pos(addr, size, offset, false);
 		/* Grab name */
 		kallsyms_expand_symbol(get_symbol_offset(pos), name);
 		modname[0] = '\0';
@@ -332,7 +408,7 @@ static int __sprint_symbol(char *buffer, unsigned long address,
 	char *modname;
 	const char *name;
 	unsigned long offset, size;
-	int len;
+	int len, extra;
 
 	address += symbol_offset;
 	name = kallsyms_lookup(address, &size, &offset, &modname, buffer);
@@ -346,9 +422,19 @@ static int __sprint_symbol(char *buffer, unsigned long address,
 	offset -= symbol_offset;
 
 	if (modname)
-		len += sprintf(buffer, "+%#lx/%#lx [%s]", offset, size, modname);
+		extra = sprintf(buffer, "+%#lx/%#lx [%s]", offset,
+				size, modname);
 	else
-		len += sprintf(buffer, "+%#lx/%#lx", offset, size);
+		extra = sprintf(buffer, "+%#lx/%#lx", offset, size);
+	buffer += extra;
+	len += extra;
+	name = kallsyms_line_loc_lookup(address - symbol_offset, &size,
+					&offset, &modname, buffer + 1);
+
+	if (name) {
+		*buffer = ' ';
+		len = strlen(buffer);
+	}
 
 	return len;
 }
@@ -488,6 +574,10 @@ static int s_show(struct seq_file *m, void *p)
 
 	/* Some debugging symbols have no name.  Ignore them. */
 	if (!iter->name[0])
+		return 0;
+
+	/* Ignore any src/line information */
+	if (iter->type == (char)0xff)
 		return 0;
 
 	if (iter->module_name[0]) {
