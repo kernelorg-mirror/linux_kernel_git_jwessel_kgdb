@@ -38,6 +38,7 @@
  */
 extern const unsigned long kallsyms_addresses[] __attribute__((weak));
 extern const u8 kallsyms_names[] __attribute__((weak));
+extern const u8 kallsyms_type_table[] __attribute__((weak));
 
 /*
  * Tell the compiler that the count isn't in the small data section if the arch
@@ -88,7 +89,7 @@ static int is_ksym_addr(unsigned long addr)
  */
 static unsigned int kallsyms_expand_symbol(unsigned int off, char *result)
 {
-	int len, skipped_first = 0;
+	int len;
 	const u8 *tptr, *data;
 
 	/* Get the compressed symbol length from the first symbol byte. */
@@ -112,11 +113,8 @@ static unsigned int kallsyms_expand_symbol(unsigned int off, char *result)
 		len--;
 
 		while (*tptr) {
-			if (skipped_first) {
-				*result = *tptr;
-				result++;
-			} else
-				skipped_first = 1;
+			*result = *tptr;
+			result++;
 			tptr++;
 		}
 	}
@@ -126,20 +124,6 @@ static unsigned int kallsyms_expand_symbol(unsigned int off, char *result)
 	/* Return to offset to the next symbol. */
 	return off;
 }
-
-/*
- * Get symbol type information. This is encoded as a single char at the
- * beginning of the symbol name.
- */
-static char kallsyms_get_symbol_type(unsigned int off)
-{
-	/*
-	 * Get just the first code, look it up in the token table,
-	 * and return the first char from this token.
-	 */
-	return kallsyms_token_table[kallsyms_token_index[kallsyms_names[off + 1]]];
-}
-
 
 /*
  * Find the offset on the compressed stream given and index in the
@@ -461,7 +445,7 @@ static unsigned long get_ksymbol_core(struct kallsym_iter *iter)
 	iter->module_name[0] = '\0';
 	iter->value = kallsyms_addresses[iter->pos];
 
-	iter->type = kallsyms_get_symbol_type(off);
+	iter->type = kallsyms_type_table[iter->pos];
 
 	off = kallsyms_expand_symbol(off, iter->name);
 
