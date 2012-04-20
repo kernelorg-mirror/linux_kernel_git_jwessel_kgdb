@@ -295,7 +295,7 @@ int kallsyms_lookup_size_offset(unsigned long addr, unsigned long *symbolsize,
 
 #ifdef CONFIG_KALLSYMS_LINE_LOCATIONS
 /*
- * Lookup an address
+ * Lookup a line location address in the kernel or or a kernel module
  * - modname is set to NULL if it's in the kernel.
  * - We guarantee that the returned name is valid until we reschedule even if.
  *   It resides in a module.
@@ -322,7 +322,8 @@ const char *kallsyms_line_loc_lookup(unsigned long addr,
 		return namebuf;
 	}
 
-	return NULL;
+	return module_address_line_lookup(addr, symbolsize, offset, modname,
+					  namebuf);
 }
 #else /* !CONFIG_KALLSYMS_LINE_LOCATIONS */
 const char *kallsyms_line_loc_lookup(unsigned long addr,
@@ -330,7 +331,8 @@ const char *kallsyms_line_loc_lookup(unsigned long addr,
 			    unsigned long *offset,
 			    char **modname, char *namebuf)
 {
-	return NULL;
+	return module_address_line_lookup(addr, symbolsize, offset, modname,
+					  namebuf);
 }
 #endif /* CONFIG_KALLSYMS_LINE_LOCATIONS */
 
