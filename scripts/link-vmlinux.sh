@@ -78,11 +78,16 @@ kallsyms()
 		kallsymopt=--all-symbols
 	fi
 
+	if [ -n "${CONFIG_KALLSYMS_LINE_LOCATIONS}" ] ; then
+		llsymopt=--ll-symbols
+		llprog="scripts/readelf --debug-dump=line -q ${1}"
+	fi
+
 	local aflags="${KBUILD_AFLAGS} ${KBUILD_AFLAGS_KERNEL}               \
 		      ${NOSTDINC_FLAGS} ${LINUXINCLUDE} ${KBUILD_CPPFLAGS}"
 
-	${NM} -n ${1} | \
-		scripts/kallsyms ${kallsymopt} | \
+	(${NM} -n ${1} ; $llprog) | \
+		scripts/kallsyms ${kallsymopt} ${llsymopt} | \
 		${CC} ${aflags} -c -o ${2} -x assembler-with-cpp -
 }
 
