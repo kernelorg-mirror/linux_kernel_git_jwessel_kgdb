@@ -64,10 +64,12 @@
 typedef unsigned long long bfd_vma;
 typedef unsigned long long bfd_size_type;
 typedef long long bfd_signed_vma;
+#define LSTR "0x%llx"
 #else
 typedef unsigned long bfd_vma;
 typedef unsigned long bfd_size_type;
 typedef long bfd_signed_vma;
+#define LSTR "0x%lx"
 #endif
 typedef bfd_signed_vma file_ptr;
 
@@ -971,7 +973,7 @@ read_leb128 (data, length_return, sign)
 
 typedef struct State_Machine_Registers
 {
-  unsigned long address;
+  bfd_vma address;
   unsigned int file;
   unsigned int line;
   unsigned int column;
@@ -1011,7 +1013,7 @@ process_extended_line_op (data, is_stmt, pointer_size)
   int bytes_read;
   unsigned int len;
   unsigned char *name;
-  unsigned long adr;
+  bfd_vma adr;
   unsigned long val;
 
   len = read_leb128 (data, & bytes_read, 0);
@@ -1040,7 +1042,7 @@ process_extended_line_op (data, is_stmt, pointer_size)
     case DW_LNE_set_address:
       adr = byte_get (data, pointer_size);
 	  if (!do_quiet)
-		printf ("set Address to 0x%lx\n", adr);
+		printf ("set Address to " LSTR "\n", adr);
       state_machine_regs.address = adr;
       break;
 
@@ -1315,7 +1317,7 @@ display_debug_lines (section, start, file)
 	      adv      = (op_code / info.li_line_range) * info.li_min_insn_length;
 	      state_machine_regs.address += adv;
 	      if (!do_quiet)
-	        printf ("  Special opcode %d: advance Address by %d to 0x%lx",
+	        printf ("  Special opcode %d: advance Address by %d to " LSTR,
 		      op_code, adv, state_machine_regs.address);
 	      adv = (op_code % info.li_line_range) + info.li_line_base;
 	      state_machine_regs.line += adv;
@@ -1323,7 +1325,7 @@ display_debug_lines (section, start, file)
 	        printf (" and Line by %d to %d\n",
 		      adv, state_machine_regs.line);
 	      if (do_quiet)
-		printf("%s:%u 0x%lx\n", ftable[state_machine_regs.file - 1],
+		printf("%s:%u " LSTR "\n", ftable[state_machine_regs.file - 1],
 state_machine_regs.line, state_machine_regs.address);
 	    }
 	  else switch (op_code)
@@ -1343,7 +1345,7 @@ state_machine_regs.line, state_machine_regs.address);
 	      data += bytes_read;
 	      state_machine_regs.address += adv;
 	      if (!do_quiet)
-	        printf ("  Advance PC by %d to %lx\n", adv,
+	        printf ("  Advance PC by %d to " LSTR "\n", adv,
 		      state_machine_regs.address);
 	      break;
 
@@ -1392,7 +1394,7 @@ state_machine_regs.line, state_machine_regs.address);
 		     * info.li_min_insn_length);
 	      state_machine_regs.address += adv;
 	      if (!do_quiet)
-	        printf ("  Advance PC by constant %d to 0x%lx\n", adv,
+	        printf ("  Advance PC by constant %d to " LSTR "\n", adv,
 		      state_machine_regs.address);
 	      break;
 
@@ -1401,7 +1403,7 @@ state_machine_regs.line, state_machine_regs.address);
 	      data += 2;
 	      state_machine_regs.address += adv;
 	      if (!do_quiet)
-	        printf ("  Advance PC by fixed size amount %d to 0x%lx\n",
+	        printf ("  Advance PC by fixed size amount %d to " LSTR "\n",
 		      adv, state_machine_regs.address);
 	      break;
 
